@@ -1,214 +1,161 @@
-using System;
-using System.Linq;
-using System.Collections.Generic;
-using System.IO;
-using System.Xml.Serialization;
+﻿using GoldSavings.App.Model;
+using GoldSavings.App.Client;
+using GoldSavings.App.Services;
+namespace GoldSavings.App;
 
-namespace GoldSavings.App.Model
+class Program
 {
-    public class GoldPrice
+    static void Main(string[] args)
     {
-        public DateTime Date { get; set; }
-        public decimal Price { get; set; }
-    }
-}
+        Console.WriteLine("Hello, Gold Investor!");
 
-namespace GoldSavings.App.Services
-{
-        public class GoldDataService
-    {
-        public List<GoldPrice> GetGoldPrices(DateTime startDate, DateTime endDate)
+        // Step 1: Get gold prices
+        GoldDataService dataService = new GoldDataService();
+
+        // Pobierz dane od 2019 do teraz, aby pokryć wszystkie lata wymagane w zadaniach
+        DateTime startDate = new DateTime(2019, 1, 1);
+        DateTime endDate = DateTime.Now;
+
+        List<GoldPrice> goldPrices = dataService.GetGoldPrices(startDate, endDate).GetAwaiter().GetResult();
+
+        if (goldPrices.Count == 0)
         {
-            return new List<GoldPrice>
-            {
-                new GoldPrice { Date = new DateTime(2020, 01, 01), Price = 1500m },
-                new GoldPrice { Date = new DateTime(2020, 02, 01), Price = 1550m },
-                new GoldPrice { Date = new DateTime(2021, 01, 01), Price = 1700m },
-                new GoldPrice { Date = new DateTime(2022, 01, 01), Price = 1750m },
-                new GoldPrice { Date = new DateTime(2023, 01, 01), Price = 1800m },
-                new GoldPrice { Date = new DateTime(2024, 01, 01), Price = 1900m }
-            };
-        }
-    }
-}
-
-namespace GoldSavings.App
-{
-    using GoldSavings.App.Model;
-    using GoldSavings.App.Services;
-
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            string outputFilePath = "goldPricesAnalysis.txt";
-            File.WriteAllText(outputFilePath, "Gold Prices Analysis Results\n\n");
-
-            // Step 1: Retrieve the gold prices
-            GoldDataService dataService = new GoldDataService();
-            DateTime startDate = new DateTime(2020, 01, 01); // Start is data retrieval
-            DateTime endDate = DateTime.Now; // End is current date
-            List<GoldPrice> goldPrices = dataService.GetGoldPrices(startDate, endDate);
-
-            if (goldPrices.Count == 0)
-            {
-                File.AppendAllText(outputFilePath, "No data found. Exiting.\n");
-                return;
-            }
-
-            File.AppendAllText(outputFilePath, $"Retrieved {goldPrices.Count} records. Ready for analysis.\n");
-
-            // Step 2: Perform LINQ Queries for Analysis
-
-            // a. Top 3 highest and lowest prices in the last year
-            File.AppendAllText(outputFilePath, "\nTop 3 Highest and Lowest Gold Prices:\n");
-            AnalyzeGoldPrices(goldPrices, outputFilePath);
-
-            // b. Check if one could earn more than 5% since January 2020
-            File.AppendAllText(outputFilePath, "\nEarnings More Than 5% Since January 2020:\n");
-            CheckEarningsFromJan2020(goldPrices, outputFilePath);
-
-            // c. Dates of 2022-2019 in the second ten of the prices ranking
-            File.AppendAllText(outputFilePath, "\nSecond Ten Prices of 2022-2019:\n");
-            GetSecondTenDates(goldPrices, outputFilePath);
-
-            // d. Average prices in 2020, 2023, and 2024
-            File.AppendAllText(outputFilePath, "\nAverage Gold Prices in 2020, 2023, 2024:\n");
-            GetAveragePrices(goldPrices, outputFilePath);
-
-            // e. Best buy/sell times and ROI between 2020-2024
-            File.AppendAllText(outputFilePath, "\nBest Time to Buy and Sell Gold Between 2020-2024:\n");
-            BestBuySellTimes(goldPrices, outputFilePath);
-
-            // Step 3: Save Gold Prices to XML
-            string filePath = "goldPrices.xml";
-            SaveGoldPricesToXML(goldPrices, filePath);
-
-            // Step 4: Read Gold Prices from XML (One Instruction)
-            var goldPricesFromFile = ReadGoldPricesFromXML(filePath);
-            File.AppendAllText(outputFilePath, "\nRead Gold Prices from XML:\n");
-            foreach (var price in goldPricesFromFile)
-            {
-                File.AppendAllText(outputFilePath, $"{price.Date.ToShortDateString()} - {price.Price}\n");
-            }
-
-            File.AppendAllText(outputFilePath, "\nGold Analysis Queries Completed.\n");
+            Console.WriteLine("No data found. Exiting.");
+            return;
         }
 
-        // a. TOP 3 highest and TOP 3 lowest prices
-        public static void AnalyzeGoldPrices(List<GoldPrice> goldPrices, string outputFilePath)
+        Console.WriteLine($"Retrieved {goldPrices.Count} records. Ready for analysis.");
+
+        // Po pobraniu danych, a przed analizą wyświetl próbkę
+        Console.WriteLine("Sample of retrieved data:");
+        foreach (var price in goldPrices.Take(5))
         {
-            var top3HighestPrices = goldPrices.OrderByDescending(p => p.Price).Take(3).ToList();
-            var top3LowestPrices = goldPrices.OrderBy(p => p.Price).Take(3).ToList();
-
-            File.AppendAllText(outputFilePath, "Top 3 Highest Gold Prices:\n");
-            foreach (var price in top3HighestPrices)
-            {
-                File.AppendAllText(outputFilePath, $"{price.Date.ToShortDateString()} - {price.Price}\n");
-            }
-
-            File.AppendAllText(outputFilePath, "\nTop 3 Lowest Gold Prices:\n");
-            foreach (var price in top3LowestPrices)
-            {
-                File.AppendAllText(outputFilePath, $"{price.Date.ToShortDateString()} - {price.Price}\n");
-            }
+            Console.WriteLine($"  {price.Date.ToShortDateString()}: {price.Price:N2} PLN");
         }
 
-        // b. Earnings more than 5% from January 2020
-        public static void CheckEarningsFromJan2020(List<GoldPrice> goldPrices, string outputFilePath)
-        {
-            var january2020Price = goldPrices.FirstOrDefault(p => p.Date.Month == 1 && p.Date.Year == 2020)?.Price;
+        // Step 2: Perform analysis
+        GoldAnalysisService analysisService = new GoldAnalysisService(goldPrices);
 
-            if (january2020Price == null)
+        try
+        {
+            // Obliczenie średniej ceny
+            var avgPrice = analysisService.GetAveragePrice();
+            Console.WriteLine($"Average Gold Price Last Half Year: {avgPrice:N2} PLN");
+
+            Console.WriteLine("---------------------------------------------------");
+
+            // a. TOP 3 highest and TOP 3 lowest prices of gold within the last year
+            Console.WriteLine("a. TOP 3 highest and TOP 3 lowest prices of gold within the last year:");
+            Console.WriteLine("Method Syntax:");
+            var (highest, lowest) = analysisService.GetTopHighestAndLowestPrices_MethodSyntax();
+
+            Console.WriteLine("TOP 3 Highest:");
+            foreach (var price in highest)
             {
-                File.AppendAllText(outputFilePath, "No data found for January 2020.\n");
-                return;
+                Console.WriteLine($"  {price.Date.ToShortDateString()}: {price.Price:N2} PLN");
             }
 
-            var datesWith5PercentEarnings = goldPrices.Where(p => p.Price > january2020Price * 1.05)
-                                                      .Select(p => p.Date)
-                                                      .ToList();
-
-            File.AppendAllText(outputFilePath, "Dates with more than 5% earnings since January 2020:\n");
-            foreach (var date in datesWith5PercentEarnings)
+            Console.WriteLine("TOP 3 Lowest:");
+            foreach (var price in lowest)
             {
-                File.AppendAllText(outputFilePath, $"{date.ToShortDateString()}\n");
+                Console.WriteLine($"  {price.Date.ToShortDateString()}: {price.Price:N2} PLN");
             }
-        }
 
-        // c. Dates of 2022-2019 in the second ten of the prices ranking
-        public static void GetSecondTenDates(List<GoldPrice> goldPrices, string outputFilePath)
-        {
-            var secondTenPrices = goldPrices.Where(p => p.Date.Year >= 2019 && p.Date.Year <= 2022)
-                                            .OrderBy(p => p.Price)
-                                            .Skip(10)
-                                            .Take(3)
-                                            .ToList();
+            Console.WriteLine("\nQuery Syntax:");
+            var (highestQuery, lowestQuery) = analysisService.GetTopHighestAndLowestPrices_QuerySyntax();
 
-            File.AppendAllText(outputFilePath, "Second Ten Prices in 2019-2022:\n");
-            foreach (var price in secondTenPrices)
+            Console.WriteLine("TOP 3 Highest:");
+            foreach (var price in highestQuery)
             {
-                File.AppendAllText(outputFilePath, $"{price.Date.ToShortDateString()} - {price.Price}\n");
+                Console.WriteLine($"  {price.Date.ToShortDateString()}: {price.Price:N2} PLN");
             }
-        }
 
-        // d. Average prices in 2020, 2023, and 2024
-        public static void GetAveragePrices(List<GoldPrice> goldPrices, string outputFilePath)
-        {
-            var avgPricesByYear = from price in goldPrices
-                                  where price.Date.Year == 2020 || price.Date.Year == 2023 || price.Date.Year == 2024
-                                  group price by price.Date.Year into g
-                                  select new
-                                  {
-                                      Year = g.Key,
-                                      AveragePrice = g.Average(p => p.Price)
-                                  };
-
-            foreach (var yearPrice in avgPricesByYear)
+            Console.WriteLine("TOP 3 Lowest:");
+            foreach (var price in lowestQuery)
             {
-                File.AppendAllText(outputFilePath, $"Average price in {yearPrice.Year}: {yearPrice.AveragePrice}\n");
+                Console.WriteLine($"  {price.Date.ToShortDateString()}: {price.Price:N2} PLN");
             }
-        }
 
-        // e. Best time to buy and sell gold, and calculate ROI
-        public static void BestBuySellTimes(List<GoldPrice> goldPrices, string outputFilePath)
-        {
-            var bestBuySell = goldPrices.Where(p => p.Date.Year >= 2020 && p.Date.Year <= 2024)
-                                        .OrderBy(p => p.Date)
-                                        .Select((price, index) => new { Price = price, Index = index })
-                                        .SelectMany((p, i) => goldPrices.Skip(i + 1).Select(s => new { Buy = p.Price, Sell = s }))
-                                        .Where(b => b.Sell.Price > b.Buy.Price)
-                                        .OrderByDescending(b => b.Sell.Price - b.Buy.Price)
-                                        .FirstOrDefault();
+            Console.WriteLine("---------------------------------------------------");
 
-            if (bestBuySell != null)
+            // b. Earning more than 5% if bought in January 2020
+            Console.WriteLine("b. Days with more than 5% return if bought in January 2020:");
+            var daysWithReturn = analysisService.GetDaysWithMoreThanFivePercentReturn();
+
+            if (daysWithReturn.Any())
             {
-                File.AppendAllText(outputFilePath, $"Best time to buy: {bestBuySell.Buy.Date.ToShortDateString()} at {bestBuySell.Buy.Price}\n");
-                File.AppendAllText(outputFilePath, $"Best time to sell: {bestBuySell.Sell.Date.ToShortDateString()} at {bestBuySell.Sell.Price}\n");
-                File.AppendAllText(outputFilePath, $"Return on Investment: {((bestBuySell.Sell.Price - bestBuySell.Buy.Price) / bestBuySell.Buy.Price) * 100}%\n");
+                Console.WriteLine($"Found {daysWithReturn.Count} days with >5% return.");
+                Console.WriteLine("First 5 days:");
+                foreach (var day in daysWithReturn.Take(5))
+                {
+                    Console.WriteLine($"  {day.Date.ToShortDateString()}: {day.Price:N2} PLN");
+                }
+
+                if (daysWithReturn.Count > 5)
+                {
+                    Console.WriteLine($"  ... and {daysWithReturn.Count - 5} more days");
+                }
             }
             else
             {
-                File.AppendAllText(outputFilePath, "No profitable buy and sell opportunities found.\n");
+                Console.WriteLine("No days found with return greater than 5%");
             }
-        }
 
-        // Step 3: Save Gold Prices to XML
-        public static void SaveGoldPricesToXML(List<GoldPrice> goldPrices, string filePath)
-        {
-            XmlSerializer serializer = new XmlSerializer(typeof(List<GoldPrice>));
-            using (StreamWriter writer = new StreamWriter(filePath))
+            Console.WriteLine("---------------------------------------------------");
+
+            // c. Dates that open the second ten of the prices ranking
+            Console.WriteLine("c. 3 dates that open the second ten of the prices ranking (2019-2022):");
+            var secondTen = analysisService.GetSecondTenPricesRanking();
+
+            foreach (var price in secondTen)
             {
-                serializer.Serialize(writer, goldPrices);
+                Console.WriteLine($"  {price.Date.ToShortDateString()}: {price.Price:N2} PLN");
             }
-            File.AppendAllText("goldPricesAnalysis.txt", "\nGold prices saved to XML file.\n");
+
+            Console.WriteLine("---------------------------------------------------");
+
+            // d. Average prices by year
+            Console.WriteLine("d. Average gold prices by year (Query Syntax):");
+            var averagesByYear = analysisService.GetAveragePricesByYear_QuerySyntax();
+
+            foreach (var yearAvg in averagesByYear.OrderBy(x => x.Key))
+            {
+                Console.WriteLine($"  {yearAvg.Key}: {yearAvg.Value:N2} PLN");
+            }
+
+            Console.WriteLine("---------------------------------------------------");
+
+            // e. Best buy and sell days
+            Console.WriteLine("e. Best buy and sell days between 2020 and 2024:");
+            var (bestBuy, bestSell, roi) = analysisService.GetBestBuyAndSellDays();
+
+            Console.WriteLine($"  Best day to buy: {bestBuy.Date.ToShortDateString()} at {bestBuy.Price:N2} PLN");
+            Console.WriteLine($"  Best day to sell: {bestSell.Date.ToShortDateString()} at {bestSell.Price:N2} PLN");
+            Console.WriteLine($"  Return on investment: {roi:P2}");
+
+            Console.WriteLine("---------------------------------------------------");
+
+            // 3. Save to XML file
+            string xmlFilePath = "goldPrices.xml";
+            Console.WriteLine($"3. Saving gold prices to XML file: {xmlFilePath}");
+            analysisService.SavePricesToXmlFile(xmlFilePath);
+            Console.WriteLine("  File saved successfully!");
+
+            Console.WriteLine("---------------------------------------------------");
+
+            // 4. Read from XML file
+            Console.WriteLine($"4. Reading gold prices from XML file: {xmlFilePath}");
+            var loadedPrices = analysisService.ReadPricesFromXmlFile(xmlFilePath);
+            Console.WriteLine($"  Successfully read {loadedPrices.Count} records from file.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error occurred during analysis: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
         }
 
-        // Step 4: Read Gold Prices from XML (One Instruction)
-        public static List<GoldPrice> ReadGoldPricesFromXML(string filePath)
-        {
-            return new XmlSerializer(typeof(List<GoldPrice>))
-                .Deserialize(new StreamReader(filePath)) as List<GoldPrice>;
-        }
+        Console.WriteLine("\nGold Analysis Queries with LINQ Completed.");
+        Console.WriteLine("\nPress any key to exit...");
+        Console.ReadKey();
     }
 }
