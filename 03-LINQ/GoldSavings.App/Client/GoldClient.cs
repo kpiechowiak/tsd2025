@@ -1,4 +1,8 @@
-﻿using Newtonsoft.Json;
+﻿using System;
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
 using GoldSavings.App.Model;
 
 namespace GoldSavings.App.Client;
@@ -15,28 +19,18 @@ public class GoldClient
     }
     public async Task<GoldPrice> GetCurrentGoldPrice()
     {
-        try
+        HttpResponseMessage responseMsg = _client.GetAsync("cenyzlota/").GetAwaiter().GetResult();
+        if (responseMsg.IsSuccessStatusCode)
         {
-            HttpResponseMessage responseMsg = _client.GetAsync("cenyzlota/").GetAwaiter().GetResult();
-            if (responseMsg.IsSuccessStatusCode)
+            string content = await responseMsg.Content.ReadAsStringAsync();
+            List<GoldPrice> prices = JsonConvert.DeserializeObject<List<GoldPrice>>(content);
+            if (prices != null && prices.Count == 1)
             {
-                string content = await responseMsg.Content.ReadAsStringAsync();
-                List<GoldPrice>? prices = JsonConvert.DeserializeObject<List<GoldPrice>>(content);
-                if (prices != null && prices.Count == 1)
-                {
-                    return prices[0];
-                }
+                return prices[0];
             }
-            return null;
         }
-        catch (HttpRequestException e)
-        {
-            Console.WriteLine($"API Request Error: {e.Message}");
-            return null;
-        }
-   
-        
-        }
+        return null;
+    }
 
     public async Task<List<GoldPrice>> GetGoldPrices(DateTime startDate, DateTime endDate)
     {
