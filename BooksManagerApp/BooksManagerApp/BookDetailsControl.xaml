@@ -1,0 +1,30 @@
+﻿<UserControl x:Class="BooksManagerApp.BookDetailsControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:BooksManagerApp"
+             xmlns:hl="clr-namespace:HomeLibrary"
+             Height="Auto" Width="Auto">
+    <StackPanel Margin="10">
+        <TextBlock Text="ID" />
+        <TextBox Text="{Binding Id, Mode=OneWay}" IsReadOnly="True" Margin="0,5"/>
+
+        <TextBlock Text="Title" />
+        <TextBox Text="{Binding Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,5"/>
+
+        <TextBlock Text="Author" />
+        <TextBox Text="{Binding Author, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,5"/>
+
+        <TextBlock Text="Year" />
+        <TextBox Text="{Binding Year, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,5"/>
+
+        <CheckBox Content="IsRead" IsChecked="{Binding IsRead, Mode=TwoWay}" Margin="0,10" />
+
+        <TextBlock Text="Format" />
+        <ComboBox ItemsSource="{Binding Source={x:Static local:BookFormatValue.All}}"
+                  SelectedItem="{Binding Format, Mode=TwoWay}"
+                  Margin="0,5"/>
+
+        <Button Content="Delete" Width="80" HorizontalAlignment="Right" Margin="0,20,0,0"
+                Click="Delete_Click" />
+    </StackPanel>
+</UserControl>
